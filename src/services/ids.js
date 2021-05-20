@@ -87,7 +87,7 @@ async function workerIds() {
         }
 
         //last packet from machine
-        const lastActivity = await metricsSrv.getLastActivity({ filter: {_id: machines[i]._id} });
+        const {lastActivity} = await metricsSrv.getLastActivity({ filter: {_id: machines[i]._id} });
 
         let health;
         //Analyzing count of packets
@@ -98,6 +98,7 @@ async function workerIds() {
         //saving metrics to mongoDB
         periodOfMonitoring = `${overallMetric.timestamp}---${overallMetric.dateNowISO}`;
         let data = {
+            ipAddress: lastActivity._source.host.ip[0],
             health, 
             lastActivity, 
             $push: 
