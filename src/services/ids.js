@@ -6,11 +6,13 @@ import metricsSrv from "./metrics";
 import { InternalError } from "./error";
 import config from "../config";
 import _ from "lodash";
+import { func } from "@hapi/joi";
 
 const { Client } = require('@elastic/elasticsearch')
 const client = new Client({ node: 'http://localhost:9200' })
 
-let status = false;
+let statusWorker = false;
+let statusHistoryWriter = false;
 
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -21,7 +23,6 @@ function formatDate(date) {
         month = '' + (d.getMonth() + 1),
         day = '' + d.getDate(),
         year = d.getFullYear();
-
     if (month.length < 2) 
         month = '0' + month;
     if (day.length < 2) 
@@ -31,7 +32,8 @@ function formatDate(date) {
 }
 
 async function controlIds({ data }) {
-    status = data.status;
+    statusWorker = data.statusWorker;
+    statusHistoryWriter = data.statusHistoryWriter
     let info ={ workerIds: "", idsHistoryWriter: ""};
     try{
     workerIds();
@@ -57,13 +59,21 @@ async function controlIds({ data }) {
         return {info};
 }
 
+async function packetsAnalyzer(overallMetric) {
+    let health;
+    if (overallMetric.metrics<200) {health=1;}
+    if (overallMetric.metrics>200&&overallMetric.metrics<300) {health=2;}
+    if (overallMetric.metrics>300) {health=3;}
+    return health;
+}
+
 async function workerIds() {
     let timeAtStart;
     let filter;
     let diff;
 
-    while (status){
-        timeAtStart = new Date(Date.now()+ (3600000*config.timezoneOffset));
+    while (statusWorker){
+        timeAtStart = new Date(Date.now());
         
         //array of machines
         let machines;
@@ -89,11 +99,9 @@ async function workerIds() {
         //last packet from machine
         const {lastActivity} = await metricsSrv.getLastActivity({ filter: {_id: machines[i]._id} });
 
-        let health;
         //Analyzing count of packets
-        if (overallMetric.metrics<200) {health=1;}
-        if (overallMetric.metrics>200&&overallMetric.metrics<300) {health=2;}
-        if (overallMetric.metrics>300) {health=3;}
+        let health=await packetsAnalyzer(overallMetric);
+        //email notifications!!!!!!
 
         //saving metrics to mongoDB
         periodOfMonitoring = `${overallMetric.timestamp}---${overallMetric.dateNowISO}`;
@@ -109,8 +117,9 @@ async function workerIds() {
         await machineRepo.updateOneByFilter({filter: {_id: machines[i]._id}, data});
 
         };
-        diff= new Date(Date.now()+ (3600000*config.timezoneOffset)) - timeAtStart;
-        await sleep((config.periodOfAnalyzing/500)-diff);
+        statusWorker = false;
+       // diff= new Date(Date.now()+ (3600000*config.timezoneOffset)) - timeAtStart;
+       // await sleep((config.periodOfAnalyzing/500)-diff);
 
     }   
 
@@ -121,23 +130,27 @@ async function idsHistoryWriter() {
     let filter;
     let diff;
 
-    while (status){
+    while (statusHistoryWriter){
         timeAtStart = new Date(Date.now()+ (3600000*config.timezoneOffset));
         
         //array of machines
         let machines;
         machines = await machineRepo.findByFilter({filter, select: "numberOfRequestsPerPeriod"});
         for (let i=0; i < machines.length; i++){
+
             let resultByType={};
             let dayMetrics = {date:"", countPerDay: 0, resultByType:{}};
             let countPerDay=0;
+            let requestPerPeriodsNeedDelete=[];
             
             for (let requestsPerPeriod of machines[i].numberOfRequestsPerPeriod){
+
+               //needs to improve
                let date = requestsPerPeriod.period.split('---')[0];
 
-            // find if element in numberOfRequestsPerPeriod is outdated
-            if (timeAtStart.getDate()-new Date(date).getDate()===1){
-                
+            // NEED TO EDIT!!!! find if element in numberOfRequestsPerPeriod is outdated
+            if (timeAtStart.getDate()-new Date(date).getDate()>=1){
+                requestPerPeriodsNeedDelete.push(requestsPerPeriod._id);
                 //count number of all packets per day
                 countPerDay+=requestsPerPeriod.value;
                 console.log(countPerDay);
@@ -147,28 +160,39 @@ async function idsHistoryWriter() {
                     resultByType[requestType.name] = (resultByType[requestType.name]? resultByType[requestType.name]: 0) + requestType.value
                 }
               
-              //making payload
-              dayMetrics.value = countPerDay;
-
-              // date of history to write ( may need modify)
-              dayMetrics.date = formatDate(date);
-
-              //making array from map
-              const resultArrayByType = [];
-              for (let key in resultByType){
-              resultArrayByType.push({
-              name: key,
-              value: resultByType[key]
-              })}
-              dayMetrics.byRequestType = resultArrayByType;
-
-              //write to MongoDB
-              await machineRepo.updateOneByFilter({filter: {_id: machines[i]._id}, data: {$push: {history: dayMetrics}}});
             }
+
+            // date of history to write ( may need modify)
+            dayMetrics.date = formatDate(date);
             }
+            //making payload
+            dayMetrics.value = countPerDay;
+
+            //making array from map
+            const resultArrayByType = [];
+            for (let key in resultByType){
+            resultArrayByType.push({
+            name: key,
+            value: resultByType[key]
+            })}
+            dayMetrics.byRequestType = resultArrayByType;
+
+            let data = {
+              $push: {history: dayMetrics},
+            };
+            //write to MongoDB
+            await machineRepo.updateOneByFilter({filter: {_id: machines[i]._id}, data});
+
+            //delete index from elasticsearch
+            let result = await metricsSrv.removeIndex({ filter: {_id: machines[i]._id} });
+
+            // NEED TO EDIT!!!! delete from MongoDB
+            await machineRepo.updateManyByFilter({filter: {_id: requestPerPeriodsNeedDelete}, data :{requestPerPeriodsNeedDelete}});
+
         };
-        diff= new Date(Date.now()+ (3600000*config.timezoneOffset)) - timeAtStart;
-        await sleep((config.periodOfWritingToHistory/7000)-diff);
+        statusHistoryWriter = false;
+        // diff= new Date(Date.now()+ (3600000*config.timezoneOffset)) - timeAtStart;
+        // await sleep((config.periodOfWritingToHistory/7000)-diff);
 
     }   
 

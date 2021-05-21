@@ -75,7 +75,7 @@ export default {
     gmailRedirectUrl: process.env.MAIL_GMAIL_REDIRECT_URL || "https://developers.google.com/oauthplayground",
   },
 
-  periodOfAnalyzing: 1800000,
+  periodOfAnalyzing: 180000000,
   periodOfWritingToHistory: 86000000,
   timezoneOffset: 3,
 

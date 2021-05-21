@@ -196,7 +196,7 @@ async function getRequestTypes({ filter }) {
       body: {
         aggs : {
           "types" : {
-              terms : { field : "type",  size : 500 }
+              terms : { field : "type",  size : 50000 }
           }
       }
     }
@@ -209,9 +209,24 @@ async function getRequestTypes({ filter }) {
   return { reqTypes };
 }
 
+async function removeIndex({ filter }) {
+
+   const date = filter.date;
+
+    let machine = await machineRepo.findById({filter :{ _id: filter._id}, select: "name"});
+    machine = machine.name;
+
+    let result = client.indices.delete({
+      index: `${machine}_packetbeat-${date}-*`,
+    });
+    
+    return result;
+}
+
 export default {
   getMetrics,
   getMetricsByRequests,
   getLastActivity,
   getRequestTypes,
+  removeIndex,
 };
