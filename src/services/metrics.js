@@ -32,7 +32,7 @@ async function getMetrics({ filter }) {
 
   const date = filter.date;
 
-  let dateNow = new Date(Date.now()+ (3600000*config.timezoneOffset));
+  let dateNow = new Date(Date.now());//+ (3600000*config.timezoneOffset));
 
   const dateNowISO = dateNow.toISOString();
 
@@ -55,7 +55,7 @@ async function getMetrics({ filter }) {
                 range: 
                 {
                   "@timestamp": {
-                    "lt": dateNowISO,
+                   // "lt": dateNowISO,
                     "gte": timestamp
                   }
                 }
@@ -104,7 +104,7 @@ async function getMetricsByRequests({ filter }) {
 
   const date = filter.date;
 
-  let dateNow = new Date(Date.now()+ (3600000*config.timezoneOffset));
+  let dateNow = new Date(Date.now());//+ (3600000*config.timezoneOffset));
 
   const dateNowISO = dateNow.toISOString();
 

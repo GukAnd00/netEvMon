@@ -73,7 +73,7 @@ async function workerIds() {
     let diff;
 
     while (statusWorker){
-        timeAtStart = new Date(Date.now());
+        timeAtStart = new Date(Date.now()+ (3600000*config.timezoneOffset));        
         
         //array of machines
         let machines;
