@@ -12,7 +12,7 @@ async function getMachines({ filter }) {
   if(filter._id) {
 
     try {
-      machines = await machineRepo.findById({ filter, select: "name ipAddress health numberOfPacketsPerPeriod lastActivity history" });
+      machines = await machineRepo.findById({ filter, select: "name ipAddress health numberOfRequestsPerPeriod lastActivity history" });
     } catch (e) {
       const error = `Failed to find machine by id`;
       logger.error(error, e);
@@ -30,7 +30,7 @@ async function getMachines({ filter }) {
   };
 
   try {
-    machines = await machineRepo.findByFilter({ filter, select: "name ipAddress health numberOfPacketsPerPeriod lastActivity", skip, limit });
+    machines = await machineRepo.findByFilter({ filter, select: "name ipAddress health numberOfRequestsPerPeriod lastActivity", skip, limit });
   } catch (e) {
     const error = `Failed to find machines`;
     logger.error(error, e);

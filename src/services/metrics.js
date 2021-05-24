@@ -10,6 +10,22 @@ import { date } from "@hapi/joi";
 const { Client } = require('@elastic/elasticsearch')
 const client = new Client({ node: 'http://localhost:9200' })
 
+client.on('request', (err, result) => {
+  if (err) {
+      console.log("Error", JSON.stringify(err))
+  } else {
+    console.log("Elastic request", JSON.stringify(result));
+  }
+});
+
+client.on('response', (err, result) => {
+  if (err) {
+    console.log("Error", JSON.stringify(err))
+  } else {
+    console.log("Elastic response", JSON.stringify(result));
+  }
+});
+
 async function getMetrics({ filter }) {
 
   let metrics;
@@ -28,7 +44,7 @@ async function getMetrics({ filter }) {
 
     let machine = await machineRepo.findById({filter :{ _id: filter._id}, select: "name"});
     machine = machine.name;
-
+    console.log(dateNowISO,timestamp);
     metrics = _.get(await client.count({ 
       index: `${machine}_packetbeat-${date}-*`,
       body: {
@@ -209,16 +225,24 @@ async function getRequestTypes({ filter }) {
   return { reqTypes };
 }
 
-async function removeIndex({ filter }) {
+async function removeIndex({ filter, history }) {
 
    const date = filter.date;
 
     let machine = await machineRepo.findById({filter :{ _id: filter._id}, select: "name"});
     machine = machine.name;
+    let result=false;
 
-    let result = client.indices.delete({
-      index: `${machine}_packetbeat-${date}-*`,
+    let count = _.get(await client.count({ 
+      index: `${machine}_packetbeat-${history.date}-*`,
+    }),"body.count");
+
+    if (count === history.value) 
+    { 
+    result = client.indices.delete({
+      index: `${machine}_packetbeat-${history.date}-*`,
     });
+    }
     
     return result;
 }

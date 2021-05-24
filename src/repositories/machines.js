@@ -12,6 +12,10 @@ function updateOneByFilter({ filter, data, select }) {
   return Machine.findOneAndUpdate(filter, data, { new: true }).select(select);
 }
 
+function updateManyByFilter({ filter, data, select }) {
+  return Machine.updateMany(filter, data).select(select);
+}
+
 function findOneByFilter({ filter, select, populate }) {
   return Machine.findOne(filter).select(select).populate(populate).lean();
 }
@@ -52,6 +56,7 @@ export default {
   create,
   findById,
   updateOneByFilter,
+  updateManyByFilter,
   findOneByFilter,
   findByFilter,
   removeByFilter,

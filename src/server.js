@@ -22,30 +22,17 @@ process.title = config.server.name;
 
 const server = express();
 server.use(helmet());
-
-// Allow CORS for "dev" mode only
-if (config.isDev) {
-  const origin = [
-    `http://localhost:${config.port}`,
-    `http://127.0.0.1:${config.port}`,
-    "http://localhost:5500",
-    "http://127.0.0.1:5500",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    `${config.webhost}:${config.port}`.replace("https", "http"),
-  ];
-  const lanIP = ip.address();
-  if (lanIP) {
-    origin.push(`http://${lanIP}:${config.port}`);
-  }
-  server.use(cors({ origin, credentials: true }));
-  logger.info(origin);
-}
+server.use(cors())
 
 // Parse body params and attache them to req.body
 server.use(bodyParser.json({ limit: config.reqBody.limit }));
 server.use(bodyParser.urlencoded({ limit: config.reqBody.limit, extended: true, parameterLimit: config.reqBody.parameterLimit }));
 server.use(addRequestId);
+server.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  next();
+});
 server.use(expressLogging(logops));
 server.use(fileUpload());
 

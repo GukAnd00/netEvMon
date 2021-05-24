@@ -41,9 +41,9 @@ async function controlIds({ data }) {
     catch (e){
         throw new InternalError;
     }
-    if (data.status===true){
+    if (data.statusWorker===true){
     {info.workerIds = "IDS started successfully. To stop, send status:false "}}
-    if (data.status===false){
+    if (data.statusWorker===false){
     {info.workerIds = "IDS stopped successfully. To start, send status:true "}}
 
     try{
@@ -51,9 +51,9 @@ async function controlIds({ data }) {
         catch (e){
             throw new InternalError;
         }
-        if (data.status===true){
+        if (data.statusHistoryWriter===true){
         {info.idsHistoryWriter = "IDS history writer started successfully. To stop, send status:false "}}
-        if (data.status===false){
+        if (data.statusHistoryWriter===false){
         {info.idsHistoryWriter = "IDS history writer stopped successfully. To start, send status:true "}}
 
         return {info};
@@ -88,7 +88,8 @@ async function workerIds() {
         
         //count of defined packets for machine
         let byRequestType=[];
-        const {reqTypes} = await metricsSrv.getRequestTypes({filter: {_id: machines[i]._id, date: formatDate(timeAtStart)}});
+        let {reqTypes} = await metricsSrv.getRequestTypes({filter: {_id: machines[i]._id, date: formatDate(timeAtStart)}});
+        if (!reqTypes) {reqTypes=[];}
         for (let j=0; j<reqTypes.length; j++){
         const byReqMetric = await metricsSrv.getMetricsByRequests({ 
             filter: {_id: machines[i]._id, date: formatDate(timeAtStart), periodGte: config.periodOfAnalyzing, request: reqTypes[j].key}
@@ -100,7 +101,7 @@ async function workerIds() {
         const {lastActivity} = await metricsSrv.getLastActivity({ filter: {_id: machines[i]._id} });
 
         //Analyzing count of packets
-        let health=await packetsAnalyzer(overallMetric);
+        let health = await packetsAnalyzer(overallMetric);
         //email notifications!!!!!!
 
         //saving metrics to mongoDB
@@ -148,6 +149,7 @@ async function idsHistoryWriter() {
                //needs to improve
                let date = requestsPerPeriod.period.split('---')[0];
 
+               console.log(timeAtStart.getDate()-new Date(date).getDate());
             // NEED TO EDIT!!!! find if element in numberOfRequestsPerPeriod is outdated
             if (timeAtStart.getDate()-new Date(date).getDate()>=1){
                 requestPerPeriodsNeedDelete.push(requestsPerPeriod._id);
@@ -180,15 +182,17 @@ async function idsHistoryWriter() {
             let data = {
               $push: {history: dayMetrics},
             };
+
+            if (timeAtStart.getDate()-new Date(dayMetrics.date).getDate()>=1){
             //write to MongoDB
             await machineRepo.updateOneByFilter({filter: {_id: machines[i]._id}, data});
 
             //delete index from elasticsearch
-            let result = await metricsSrv.removeIndex({ filter: {_id: machines[i]._id} });
-
-            // NEED TO EDIT!!!! delete from MongoDB
-            await machineRepo.updateManyByFilter({filter: {_id: requestPerPeriodsNeedDelete}, data :{requestPerPeriodsNeedDelete}});
-
+            let result = await metricsSrv.removeIndex({ filter: {_id: machines[i]._id}, history: dayMetrics});
+            console.log(result);
+            //delete from MongoDB
+            await machineRepo.updateManyByFilter({filter: {_id: machines[i]._id}, data :{ $pull: { numberOfRequestsPerPeriod: { _id : {  $in: requestPerPeriodsNeedDelete} }} } });
+            }
         };
         statusHistoryWriter = false;
         // diff= new Date(Date.now()+ (3600000*config.timezoneOffset)) - timeAtStart;
