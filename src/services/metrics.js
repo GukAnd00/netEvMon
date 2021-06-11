@@ -10,21 +10,97 @@ import { date } from "@hapi/joi";
 const { Client } = require('@elastic/elasticsearch')
 const client = new Client({ node: 'http://localhost:9200' })
 
-client.on('request', (err, result) => {
-  if (err) {
-      console.log("Error", JSON.stringify(err))
-  } else {
-    console.log("Elastic request", JSON.stringify(result));
-  }
-});
+// client.on('request', (err, result) => {
+//   if (err) {
+//       console.log("Error", JSON.stringify(err))
+//   } else {
+//     console.log("Elastic request", JSON.stringify(result));
+//   }
+// });
 
-client.on('response', (err, result) => {
-  if (err) {
-    console.log("Error", JSON.stringify(err))
-  } else {
-    console.log("Elastic response", JSON.stringify(result));
+// client.on('response', (err, result) => {
+//   if (err) {
+//     console.log("Error", JSON.stringify(err))
+//   } else {
+//     console.log("Elastic response", JSON.stringify(result));
+//   }
+// });
+
+async function getMetricsByIp({ filter }) {
+
+  let metricsByIp;
+
+  const date = filter.date;
+
+  let dateNow = new Date(Date.now());//+ (3600000*config.timezoneOffset));
+
+  const dateNowISO = dateNow.toISOString();
+
+  let timestamp = new Date(dateNow - filter.periodGte);
+  timestamp = timestamp.toISOString();
+
+  if(filter._id) {
+
+    let machine = await machineRepo.findById({filter :{ _id: filter._id}, select: "name"});
+    machine = machine.name;
+    metricsByIp =  _.get(await client.search({ 
+      index: `${machine}_packetbeat-${date}-*`, 
+      body: {
+          query: {
+                range: 
+                {
+                  "@timestamp": {
+                    "lt": dateNowISO,
+                    "gte": timestamp
+                  }
+                }
+        },
+        aggs : {
+          "ips" : {
+              terms : { field : "source.ip",  size : 50000 },
+              aggs : {
+                "reqs" : {
+                    terms : { field : "type",  size : 50000 }
+                } },
+          },
+          
+      }
+    }
+      
+    }),"body.aggregations.ips.buckets");
   }
-});
+
+  if(!filter._id) {
+
+    metricsByIp = _.get(await client.count({ 
+      index: `*_packetbeat-${date}-*`,
+      body: {
+        query: {
+              range: 
+              {
+                "@timestamp": {
+                  "lt": dateNowISO,
+                  "gte": timestamp
+                }
+              }
+      },
+      aggs : {
+        "ips" : {
+            terms : { field : "source.ip",  size : 50000 },
+            aggs : {
+              "reqs" : {
+                  terms : { field : "type",  size : 50000 }
+              } },
+        },
+        
+    }
+  }
+    
+    }),"body.aggregations.reqs.buckets");
+  }
+
+  return { metricsByIp, dateNowISO, timestamp};
+}
 
 async function getMetrics({ filter }) {
 
@@ -44,7 +120,6 @@ async function getMetrics({ filter }) {
 
     let machine = await machineRepo.findById({filter :{ _id: filter._id}, select: "name"});
     machine = machine.name;
-    console.log(dateNowISO,timestamp);
     metrics = _.get(await client.count({ 
       index: `${machine}_packetbeat-${date}-*`,
       body: {
@@ -65,8 +140,7 @@ async function getMetrics({ filter }) {
         }
       }
     }),"body.count");
-    
-    console.log(metrics);
+
   }
 
   if(!filter._id) {
@@ -92,7 +166,6 @@ async function getMetrics({ filter }) {
       }
     }),"body.count");
 
-    console.log(metrics);
   }
 
   return { metrics, dateNowISO, timestamp};
@@ -141,7 +214,6 @@ async function getMetricsByRequests({ filter }) {
         }
       }
     }),"body.count");
-    console.log(metrics);
   }
 
   if(!filter._id) {
@@ -170,8 +242,6 @@ async function getMetricsByRequests({ filter }) {
         }
       }
     }),"body.count");
-
-    console.log(metrics);
   }
 
   return { metrics };
@@ -192,8 +262,6 @@ async function getLastActivity({ filter }) {
         query: { match_all: {}}
       }
     }),"body.hits.hits")[0];
-
-    console.log(lastActivity);
 
   return { lastActivity };
 }
@@ -218,9 +286,6 @@ async function getRequestTypes({ filter }) {
     }
       
     }),"body.aggregations.types.buckets");
-
-    
-    console.log(reqTypes);
     
   return { reqTypes };
 }
@@ -249,6 +314,7 @@ async function removeIndex({ filter, history }) {
 
 export default {
   getMetrics,
+  getMetricsByIp,
   getMetricsByRequests,
   getLastActivity,
   getRequestTypes,

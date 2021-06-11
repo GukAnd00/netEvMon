@@ -57,26 +57,20 @@ export default {
 
   mail: {
     host: process.env.MAIL_HOST || (isDev ? "smtp.gmail.com" : "smtp.gmail.com"),
-    port: process.env.MAIL_PORT || (isDev ? 465 : 587),
-    secure: !!isDev,
-    ignoreTLS: !!isDev,
+    port: process.env.MAIL_PORT || (isDev ? 587 : 587),
+    secure: false,
+    ignoreTLS: false,
     debug: !!isDev,
     auth: {
-      type: process.env.MAIL_AUTH_TYPE || (isDev ? "OAuth2" : "OAuth2"),
+      userName: "Network Events Monitor",
       user: process.env.MAIL_AUTH_USER || (isDev ? "noreply.notevmon@gmail.com" : "noreply.notevmon@gmail.com"),
-      userName: isDev ? "NetEvMon" : "NetEvMon",
       pass: process.env.MAIL_AUTH_PASS || (isDev ? "passwordNetEvMon" : "passwordNetEvMon"),
-      clientId: process.env.MAIL_AUTH_CLIENT_ID || (isDev ? "814892200232-8p9tfnhncqhnndcl79tnv2rd1rihhjh3.apps.googleusercontent.com" : "814892200232-8p9tfnhncqhnndcl79tnv2rd1rihhjh3.apps.googleusercontent.com"),
-      clientSecret: process.env.MAIL_AUTH_CLIENT_SECRET || (isDev ? "4wrr9sAOU8VjSMnxlBajfuC6" : "4wrr9sAOU8VjSMnxlBajfuC6"),
-      refreshToken: process.env.MAIL_AUTH_REFRESH_TOKEN || (isDev ? "1//04VVOnrtzYGPzCgYIARAAGAQSNwF-L9IrbTL-AIO6uBsV_4poBc2jIMAR1yDG-5gAZZY9Grt1lWP2WQZbCFRL9QVMsJYFka429GI" : "1//04VVOnrtzYGPzCgYIARAAGAQSNwF-L9IrbTL-AIO6uBsV_4poBc2jIMAR1yDG-5gAZZY9Grt1lWP2WQZbCFRL9QVMsJYFka429GI"),
-      accessToken: process.env.MAIL_AUTH_ACCESS_TOKEN || (isDev ? "ya29.a0AfH6SMChk6bI3qZ5w4LN3MnJW4ShKpCY8r2aPJ0bEZnEpQ2sZPcF5CEEVMo8YuJwiTD0_mMbGZODb39yfFd21LR-MDa9vVCxQqKzGnOyVMQs3sGjGn88BffOJ9lPyt3Wlg53Z94093PJXklgsHsm-CrrSlWnaXWrAcTbUKMQoHg" : "ya29.a0AfH6SMChk6bI3qZ5w4LN3MnJW4ShKpCY8r2aPJ0bEZnEpQ2sZPcF5CEEVMo8YuJwiTD0_mMbGZODb39yfFd21LR-MDa9vVCxQqKzGnOyVMQs3sGjGn88BffOJ9lPyt3Wlg53Z94093PJXklgsHsm-CrrSlWnaXWrAcTbUKMQoHg"),
-      tokenExpireAt: process.env.MAIL_AUTH_TOKEN_EXPIRE_AT || (isDev ? new Date() : new Date()),
     },
-    gmailRedirectUrl: process.env.MAIL_GMAIL_REDIRECT_URL || "https://developers.google.com/oauthplayground",
   },
 
-  periodOfAnalyzing: 1800000,
+  periodOfAnalyzing: 180000,
   periodOfWritingToHistory: 86000000,
   timezoneOffset: 3,
+  numberOfPacketsPerPeriod:12000,
 
 };

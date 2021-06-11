@@ -30,7 +30,7 @@ async function getMachines({ filter }) {
   };
 
   try {
-    machines = await machineRepo.findByFilter({ filter, select: "name ipAddress health numberOfRequestsPerPeriod lastActivity", skip, limit });
+    machines = await machineRepo.findByFilter({ filter, select: "name ipAddress health numberOfRequestsPerPeriod lastActivity attack history", skip, limit });
   } catch (e) {
     const error = `Failed to find machines`;
     logger.error(error, e);

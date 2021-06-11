@@ -32,9 +32,14 @@ const MachineSchema = new mongoose.Schema({
       name : String,
       value : Number,
     }],
+    attack: Object,
   }],
 
   lastActivity: {
+    type: Object,
+  },
+
+  attack: {
     type: Object,
   }
 

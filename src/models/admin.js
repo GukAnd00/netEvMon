@@ -4,10 +4,6 @@ import mongoose from "mongoose";
 
 const AdminSchema = new mongoose.Schema({
   
-  login: {
-    type: String, trim: true, default: "",
-  },
-
   email: {
     type: String, trim: true, lowercase: true, default: "", 
   },
@@ -18,10 +14,6 @@ const AdminSchema = new mongoose.Schema({
 
   password: {
     type: String, trim: true, default: "", select: false,
-  },
-
-  del: {
-    type: Boolean, default: false, index: true, select: false,
   },
 
   deletedAt: { type: Date, default: null, select: false },
